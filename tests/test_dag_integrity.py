@@ -30,7 +30,7 @@ def test_every_dag_has_tags():
 def test_student_dags_are_namespaced():
     """Student DAGs under dags/<name>/ must prefix their dag_id with <name>.
 
-    Enforces the Week 11 Ch8 convention that prevents thirty identical
+    Enforces the Week 12 Ch8 convention that prevents thirty identical
     'taxi_pipeline' entries in the shared UI. Teacher DAGs at the top
     level of dags/ are exempt.
     """

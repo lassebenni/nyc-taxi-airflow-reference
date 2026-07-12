@@ -1,8 +1,8 @@
 # class-airflow-reference
 
-The shared Airflow DAGs repo for the **HYF Data Track, Week 11**. Cloned onto the class VM by the bicep at [`datatrack/bicep/modules/vm-airflow.bicep`](https://github.com/lassebenni/datatrack) so that every merge to `main` deploys to the shared scheduler within ~60 seconds (a cron runs `git pull --ff-only` every minute).
+The shared Airflow DAGs repo for the **HYF Data Track, Week 12**. Cloned onto the class VM by the bicep at [`datatrack/bicep/modules/vm-airflow.bicep`](https://github.com/lassebenni/datatrack) so that every merge to `main` deploys to the shared scheduler within ~60 seconds (a cron runs `git pull --ff-only` every minute).
 
-Students follow the ten-step workflow in [`Data Track/Week 11/week_11__8_shared_airflow.md`](https://github.com/lassebenni/datatrack) to deploy their `taxi_pipeline` under their own subdirectory. See the chapter for the namespace + tag conventions; the short version is:
+Students follow the ten-step workflow in [`Data Track/Week 12/week_12__8_shared_airflow.md`](https://github.com/lassebenni/datatrack) to deploy their `taxi_pipeline` under their own subdirectory. See the chapter for the namespace + tag conventions; the short version is:
 
 - Your DAG lives at `dags/<yourname>/<dag_file>.py`.
 - `dag_id` is prefixed with your username (`lasse_taxi_pipeline`).

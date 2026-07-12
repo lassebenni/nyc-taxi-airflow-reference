@@ -1,4 +1,4 @@
-"""Final-state Week 11 taxi_pipeline (post-Chapter 5).
+"""Final-state Week 12 taxi_pipeline (post-Chapter 5).
 
 Reference snapshot students can diff their own ``dags/taxi_pipeline.py``
 against if they get stuck. Ends up here after applying:
@@ -27,7 +27,7 @@ Design notes:
     the whole class of issues: the parquet bytes live in local
     memory, get read by pandas directly, then land in Postgres.
   - dbt_run and dbt_test stay separate because they are genuinely
-    distinct units of work — run materializes, test asserts. Seeing
+    distinct units of work: run materializes, test asserts. Seeing
     ``dbt_test`` red while ``dbt_run`` is green is a load-bearing
     signal for Ch7 debugging.
 
@@ -36,7 +36,7 @@ Requires:
     Docker Compose) with apache-airflow-providers-postgres,
     psycopg2-binary, pyarrow, pandas, requests available.
   - ``AIRFLOW_STUDENT`` env var set (Astro reads ``.env``; the VM
-    takes it from the Docker Compose ``environment`` block) — picks
+    takes it from the Docker Compose ``environment`` block): picks
     the ``airflow_<name>`` schema this DAG writes into.
   - ``azure_pg`` Airflow Connection (seeded on the VM via bicep, or
     added manually in Astro's UI for local dev) pointing at
@@ -45,6 +45,11 @@ Requires:
     (Astro: ``/usr/local/airflow/include/dbt_project``;
     VM:    ``/opt/airflow/include/dbt_project``). The ``DBT_DIR``
     constant below auto-detects which one is present.
+
+This is the teacher's shared-VM copy: it keeps the ``lasse_`` dag_id
+prefix and ``student:lasse`` tag per the Ch8 namespace convention. The
+body is kept in sync with the curriculum's canonical snapshot at
+``Data Track/Week 12/assets/dag_snapshots/taxi_pipeline.py``.
 """
 
 import io
@@ -60,7 +65,7 @@ from airflow.sdk import dag, get_current_context, task
 
 # STUDENT is read from the AIRFLOW_STUDENT env var for local Astro dev
 # (set in .env); on the shared class VM we do not have per-student env
-# vars, so we fall back to the parent directory name — ``dags/<name>/``
+# vars, so we fall back to the parent directory name: ``dags/<name>/``
 # gives us ``<name>`` as the student identifier. The two paths converge
 # on the same ``airflow_<name>`` schema.
 STUDENT = os.environ.get("AIRFLOW_STUDENT") or Path(__file__).parent.name
@@ -134,7 +139,7 @@ def _ds_from_context() -> str:
     catchup=False,
     max_active_runs=1,   # serialize: concurrent dbt runs collide on __dbt_backup relations
     default_args={"retries": 2},   # retry transient failures twice before marking the task failed
-    tags=["week11", "taxi", "student:lasse"],
+    tags=["week12", "taxi", "student:lasse"],
 )
 def taxi_pipeline():
     @task()
@@ -172,6 +177,7 @@ def taxi_pipeline():
             cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}"')
         df.head(0).to_sql(
             "raw_trips", engine, schema=SCHEMA, if_exists="append", index=False,
+            method="multi", chunksize=1000,
         )
         with hook.get_conn() as conn, conn.cursor() as cur:
             cur.execute(
@@ -179,8 +185,15 @@ def taxi_pipeline():
                 "WHERE to_char(lpep_pickup_datetime, 'YYYY-MM') = %s",
                 (year_month,),
             )
+        # method="multi" + chunksize=1000 batches 1000 rows per INSERT
+        # instead of pandas' default row-at-a-time. For a ~60k-row
+        # monthly load over TLS to Azure Postgres this turns a ~3-minute
+        # task into ~15-20 seconds. The production-grade upgrade is
+        # PostgresHook.copy_expert with COPY (another 5-10x faster);
+        # see the Going Further page for that pattern.
         df.to_sql(
             "raw_trips", engine, schema=SCHEMA, if_exists="append", index=False,
+            method="multi", chunksize=1000,
         )
         return len(df)
 
