@@ -4,11 +4,11 @@
 #
 # DO NOT add dbt here: Astro Runtime 3.3 ships Python 3.14, and stable dbt-core
 # (1.10/1.11) does not support 3.14 yet, so a baked dbt-core==1.10.* crashes on
-# import (mashumaro UnserializableField). Students whose DAGs need dbt install it
-# inline in the BashOperator that runs it, where pip resolves a 3.14-compatible
-# build (currently dbt-core 1.12.x):
-#   bash_command="pip install --quiet 'dbt-postgres==1.10.*' && dbt run --project-dir ..."
-# Bake a custom Airflow image via a Dockerfile once dbt ships a 3.14-compatible stable.
+# import (mashumaro UnserializableField). Instead the dbt tasks run dbt through
+# uvx on Python 3.11 (the same interpreter the Week 10 dbt project targets), so
+# they get the same stable dbt-core 1.10:
+#   bash_command="uvx --python 3.11 --from 'dbt-core==1.10.*' --with 'dbt-postgres==1.10.*' dbt run --project-dir ..."
+# uv already ships in the Astro image and caches Python 3.11 + dbt after run one.
 apache-airflow-providers-postgres
 psycopg2-binary
 pyarrow
