@@ -2,11 +2,13 @@
 # via _PIP_ADDITIONAL_REQUIREMENTS (see datatrack/bicep/modules/vm-airflow.bicep).
 # Keep this list in sync with the airflowPipRequirements default in the bicep.
 #
-# DO NOT add dbt here: dbt-core==1.10.* conflicts with Airflow 2.9's OTEL pins
-# and causes pip to backtrack indefinitely on every container restart. Students
-# whose DAGs need dbt should install it inline in the BashOperator that runs it:
-#   bash_command="pip install --quiet dbt-postgres==1.10.* && dbt run --project-dir ..."
-# Or bake a custom Airflow image via a Dockerfile (future work).
+# DO NOT add dbt here: Astro Runtime 3.3 ships Python 3.14, and stable dbt-core
+# (1.10/1.11) does not support 3.14 yet, so a baked dbt-core==1.10.* crashes on
+# import (mashumaro UnserializableField). Students whose DAGs need dbt install it
+# inline in the BashOperator that runs it, where pip resolves a 3.14-compatible
+# build (currently dbt-core 1.12.x):
+#   bash_command="pip install --quiet 'dbt-postgres==1.10.*' && dbt run --project-dir ..."
+# Bake a custom Airflow image via a Dockerfile once dbt ships a 3.14-compatible stable.
 apache-airflow-providers-postgres
 psycopg2-binary
 pyarrow

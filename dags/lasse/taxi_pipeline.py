@@ -184,15 +184,20 @@ def taxi_pipeline():
         )
         return len(df)
 
+    # dbt is installed at task runtime, not baked into the image: Astro Runtime
+    # 3.3 ships Python 3.14, which stable dbt-core does not support yet (baked
+    # dbt-core==1.10.* crashes on import), so pip resolves a 3.14-compatible
+    # build here.
+    dbt_install = "pip install --quiet 'dbt-postgres==1.10.*'"
     dbt_run = BashOperator(
         task_id="dbt_run",
-        bash_command=f"dbt run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
+        bash_command=f"{dbt_install} && dbt run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
         env=DBT_ENV,
         append_env=True,
     )
     dbt_test = BashOperator(
         task_id="dbt_test",
-        bash_command=f"dbt test --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
+        bash_command=f"{dbt_install} && dbt test --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
         env=DBT_ENV,
         append_env=True,
     )
