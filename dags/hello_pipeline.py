@@ -2,9 +2,7 @@
 from datetime import datetime
 
 from airflow.sdk import dag, task
-
-# TODO (see EXERCISE.md): import the FileSensor from the standard provider.
-# from airflow.providers.standard.sensors.filesystem import FileSensor
+from airflow.providers.standard.sensors.filesystem import FileSensor
 
 
 @dag(
@@ -14,10 +12,17 @@ from airflow.sdk import dag, task
     tags=["week12", "intro"],
 )
 def hello_pipeline():
-    # TODO (see EXERCISE.md): add a `wait_for_flag` FileSensor that blocks
-    # until /tmp/ready.flag exists (fs_conn_id="fs_default",
-    # mode="reschedule", poke_interval=10, timeout=600), then wire it so
-    # `transform` runs only after the flag appears.
+    # Blocks until /tmp/ready.flag exists. mode="reschedule" frees the
+    # worker slot between checks instead of holding it, which is the right
+    # default for a sensor that may wait minutes or hours.
+    wait_for_flag = FileSensor(
+        task_id="wait_for_flag",
+        fs_conn_id="fs_default",
+        filepath="/tmp/ready.flag",
+        poke_interval=10,
+        mode="reschedule",
+        timeout=600,
+    )
 
     @task()
     def ingest() -> int:
@@ -27,8 +32,8 @@ def hello_pipeline():
     def transform(count: int) -> None:
         print(f"Processed {count} rows")
 
-    # TODO: replace this so the flag gates `transform`.
-    transform(ingest())
+    # transform now waits for both ingest (for the row count) and the flag.
+    wait_for_flag >> transform(ingest())
 
 
 hello_pipeline()
