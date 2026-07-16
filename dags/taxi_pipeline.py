@@ -79,6 +79,10 @@ def taxi_pipeline():
         append_env=True,
     )
 
+    # TODO (see EXERCISE.md): insert a @task.branch `check_rows` between
+    # ingest_taxi_month and dbt_run. It should run the dbt tasks when the
+    # ingest returned rows, and route to a `no_data` EmptyOperator (skipping
+    # dbt_run and dbt_test) when the ingest returned zero rows.
     ingest_taxi_month() >> dbt_run >> dbt_test
 
 
