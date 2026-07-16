@@ -64,10 +64,16 @@ def taxi_pipeline():
     @task()
     def ingest_taxi_month() -> int:
         ds = _ds_from_context()
-        # TODO (see EXERCISE.md): also read `data_interval_start` from
-        # get_current_context() and print both values, so you can compare
-        # what the ds helper returns against the raw context variable, and
-        # work out when the two diverge.
+        # Compare the ds helper against the raw context variable. For a
+        # @monthly *scheduled* (or backfilled) run they match: both are the
+        # first of the month. They diverge on a *manual* trigger, where
+        # logical_date is None so _ds_from_context() falls back to run_after
+        # (≈ now), while data_interval_start still reflects the scheduled
+        # interval. That gap is why a partition key must come from the
+        # logical date, never from wall-clock now().
+        ctx = get_current_context()
+        dis = ctx["data_interval_start"].strftime("%Y-%m-%d")
+        print(f"ds={ds} data_interval_start={dis}")
         year_month = ds[:7]
 
         # raise_for_status converts a 403 (future month, typo'd path)
