@@ -79,6 +79,11 @@ def taxi_pipeline():
         append_env=True,
     )
 
+    # TODO (see EXERCISE.md): add a second ingest task `ingest_zones_lookup`
+    # that loads the 265-row TLC zone-lookup CSV into a `raw_zones` table,
+    # then run both ingest tasks in parallel into a shared `gate`
+    # EmptyOperator before dbt_run:
+    #   [ingest_taxi_month(), ingest_zones_lookup()] >> gate >> dbt_run >> dbt_test
     ingest_taxi_month() >> dbt_run >> dbt_test
 
 
