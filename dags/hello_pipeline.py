@@ -2,9 +2,7 @@
 from datetime import datetime
 
 from airflow.sdk import dag, task
-
-# TODO (see EXERCISE.md): import WasbBlobSensor from the Microsoft Azure provider.
-# from airflow.providers.microsoft.azure.sensors.wasb import WasbBlobSensor
+from airflow.providers.microsoft.azure.sensors.wasb import WasbBlobSensor
 
 
 @dag(
@@ -14,10 +12,17 @@ from airflow.sdk import dag, task
     tags=["week12", "intro"],
 )
 def hello_pipeline():
-    # TODO (see EXERCISE.md): add a `wait_for_blob` WasbBlobSensor on container
-    # `raw`, blob `week12-sensor-test/ready.flag` (wasb_conn_id="wasb_default",
-    # mode="reschedule", poke_interval=30, timeout=600), then wire it so
-    # `transform` runs only after the blob lands.
+    # Blocks until the blob lands in hyfstoragedev/raw. mode="reschedule" frees
+    # the worker slot between checks instead of holding it.
+    wait_for_blob = WasbBlobSensor(
+        task_id="wait_for_blob",
+        wasb_conn_id="wasb_default",
+        container_name="raw",
+        blob_name="week12-sensor-test/ready.flag",
+        poke_interval=30,
+        mode="reschedule",
+        timeout=600,
+    )
 
     @task()
     def ingest() -> int:
@@ -27,8 +32,7 @@ def hello_pipeline():
     def transform(count: int) -> None:
         print(f"Processed {count} rows")
 
-    # TODO: replace this so the blob gates `transform`.
-    transform(ingest())
+    wait_for_blob >> transform(ingest())
 
 
 hello_pipeline()
