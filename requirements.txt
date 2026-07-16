@@ -8,6 +8,7 @@
 #   bash_command="pip install --quiet dbt-postgres==1.10.* && dbt run --project-dir ..."
 # Or bake a custom Airflow image via a Dockerfile (future work).
 apache-airflow-providers-postgres
+apache-airflow-providers-microsoft-azure
 psycopg2-binary
 pyarrow
 pandas
