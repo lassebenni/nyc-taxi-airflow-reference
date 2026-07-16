@@ -9,6 +9,7 @@ from sqlalchemy import text
 from airflow.sdk import dag, task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 # Per-student schema isolation. Set AIRFLOW_STUDENT in airflow_settings.yaml
 # or your shell so every student writes into their own airflow_<name>
@@ -20,6 +21,7 @@ TLC_URL = (
     "https://d37ci6vzurychx.cloudfront.net/trip-data/"
     "green_tripdata_2024-01.parquet"
 )
+ZONES_URL = "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
 
 DBT_ENV = {
     "PG_HOST": "{{ conn.azure_pg.host }}",
@@ -66,6 +68,27 @@ def taxi_pipeline():
         )
         return len(df)
 
+    @task()
+    def ingest_zones_lookup() -> int:
+        # Independent source: the 265-row TLC zone lookup. Runs in parallel
+        # with ingest_taxi_month because neither depends on the other.
+        resp = requests.get(ZONES_URL, timeout=60)
+        resp.raise_for_status()
+        df = pd.read_csv(io.BytesIO(resp.content))
+
+        hook = PostgresHook(postgres_conn_id="azure_pg")
+        engine = hook.get_sqlalchemy_engine()
+        with engine.begin() as conn:
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}"'))
+        df.to_sql(
+            "raw_zones",
+            engine,
+            schema=SCHEMA,
+            if_exists="replace",
+            index=False,
+        )
+        return len(df)
+
     dbt_run = BashOperator(
         task_id="dbt_run",
         bash_command=f"uvx --python 3.11 --from 'dbt-core==1.10.*' --with 'dbt-postgres==1.10.*' dbt run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
@@ -79,12 +102,9 @@ def taxi_pipeline():
         append_env=True,
     )
 
-    # TODO (see EXERCISE.md): add a second ingest task `ingest_zones_lookup`
-    # that loads the 265-row TLC zone-lookup CSV into a `raw_zones` table,
-    # then run both ingest tasks in parallel into a shared `gate`
-    # EmptyOperator before dbt_run:
-    #   [ingest_taxi_month(), ingest_zones_lookup()] >> gate >> dbt_run >> dbt_test
-    ingest_taxi_month() >> dbt_run >> dbt_test
+    # Both ingests run in parallel; gate waits for both before dbt starts.
+    gate = EmptyOperator(task_id="gate")
+    [ingest_taxi_month(), ingest_zones_lookup()] >> gate >> dbt_run >> dbt_test
 
 
 taxi_pipeline()
