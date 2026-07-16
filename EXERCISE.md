@@ -27,11 +27,15 @@ In `dags/hello_pipeline.py` (look for the `TODO` markers):
 
 1. `astro dev run dags reserialize`, unpause `hello_pipeline`, and trigger a run.
 2. `wait_for_flag` should sit in `up_for_reschedule` (not failed): it is polling, releasing its worker slot between checks.
-3. Create the flag inside the scheduler container:
+3. Create the flag inside the scheduler container (Linux inside Docker; works from WSL, Git Bash, or PowerShell on Windows):
+
    ```bash
-   astro dev bash scheduler
+   astro dev bash --scheduler
    touch /tmp/ready.flag
+   exit
    ```
+
+   `touch` runs in the container shell, not in Windows CMD. Use `--scheduler`, not a positional argument.
 4. Within about a minute the sensor turns green and `transform` runs. Check its log for `Processed 42 rows`.
 
 ## Success criteria
