@@ -9,6 +9,7 @@ from sqlalchemy import text
 from airflow.sdk import dag, task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 # Per-student schema isolation. Set AIRFLOW_STUDENT in airflow_settings.yaml
 # or your shell so every student writes into their own airflow_<name>
@@ -79,11 +80,22 @@ def taxi_pipeline():
         append_env=True,
     )
 
-    # TODO (see EXERCISE.md): insert a @task.branch `check_rows` between
-    # ingest_taxi_month and dbt_run. It should run the dbt tasks when the
-    # ingest returned rows, and route to a `no_data` EmptyOperator (skipping
-    # dbt_run and dbt_test) when the ingest returned zero rows.
-    ingest_taxi_month() >> dbt_run >> dbt_test
+    @task.branch()
+    def check_rows(row_count: int) -> str:
+        # Pick the path at runtime: run dbt only when this month actually
+        # loaded rows. A branch task returns the task_id(s) to run; every
+        # other direct-downstream task is marked skipped.
+        if row_count == 0:
+            return "no_data"
+        return "dbt_run"
+
+    # The skip path: a no-op that succeeds so the DAG run is not marked
+    # failed when there is nothing to transform.
+    no_data = EmptyOperator(task_id="no_data")
+
+    branch = check_rows(ingest_taxi_month())
+    branch >> dbt_run >> dbt_test
+    branch >> no_data
 
 
 taxi_pipeline()
