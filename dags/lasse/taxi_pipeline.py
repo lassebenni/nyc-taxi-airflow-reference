@@ -184,15 +184,21 @@ def taxi_pipeline():
         )
         return len(df)
 
+    # dbt runs via uvx on Python 3.11, not the image's Python 3.14: stable
+    # dbt-core does not support 3.14 yet (baked dbt-core==1.10.* crashes on
+    # import), and 3.11 is the exact interpreter the Week 10 dbt project targets.
+    # uv ships with the Astro image; uvx caches Python 3.11 + dbt after the first
+    # run. Verified against Azure Postgres: dbt build -> PASS=13 WARN=3 ERROR=0.
+    dbt = "uvx --python 3.11 --from 'dbt-core==1.10.*' --with 'dbt-postgres==1.10.*' dbt"
     dbt_run = BashOperator(
         task_id="dbt_run",
-        bash_command=f"dbt run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
+        bash_command=f"{dbt} run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
         env=DBT_ENV,
         append_env=True,
     )
     dbt_test = BashOperator(
         task_id="dbt_test",
-        bash_command=f"dbt test --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
+        bash_command=f"{dbt} test --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
         env=DBT_ENV,
         append_env=True,
     )
