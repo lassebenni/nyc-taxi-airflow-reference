@@ -30,18 +30,25 @@ def test_every_dag_has_tags():
 def test_student_dags_are_namespaced():
     """Student DAGs under dags/<name>/ must prefix their dag_id with <name>.
 
-    Enforces the Week 11 Ch8 convention that prevents thirty identical
+    Enforces the Week 12 Ch8 convention that prevents thirty identical
     'taxi_pipeline' entries in the shared UI. Teacher DAGs at the top
-    level of dags/ are exempt.
+    level of dags/ are exempt. Works with both absolute and relative
+    ``fileloc`` values (CI runs pytest from the repo root, which yields a
+    relative path with no fixed depth, so we locate the ``dags`` segment
+    instead of slicing a fixed number of parents).
     """
-    from pathlib import Path
+    from pathlib import PurePath
 
     dag_bag = DagBag(dag_folder="dags", include_examples=False)
     for dag_id, dag in dag_bag.dags.items():
-        rel = Path(dag.fileloc).relative_to(Path(dag.fileloc).parents[2])
-        parts = rel.parts
-        if len(parts) >= 3 and parts[0] == "dags":
-            student_dir = parts[1]
+        parts = PurePath(dag.fileloc).parts
+        if "dags" not in parts:
+            continue
+        i = parts.index("dags")
+        # Student DAGs are dags/<name>/<file>.py: at least two segments
+        # after 'dags'. Teacher DAGs sit directly in dags/ (one segment).
+        if len(parts) - i >= 3:
+            student_dir = parts[i + 1]
             assert dag_id.startswith(f"{student_dir}_"), (
                 f"DAG {dag_id} lives under dags/{student_dir}/ but its dag_id "
                 f"does not start with '{student_dir}_'. See Ch8 namespace convention."
