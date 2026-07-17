@@ -19,7 +19,7 @@ from airflow.sdk import dag, task
     schedule="@daily",
     start_date=datetime(2026, 1, 1),
     catchup=False,
-    tags=["class-demo", "teacher", "week11"],
+    tags=["class-demo", "teacher", "week12"],
 )
 def class_demo_hello():
     @task()
