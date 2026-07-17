@@ -1,4 +1,4 @@
-"""Final-state Week 11 taxi_pipeline (post-Chapter 5).
+"""Final-state Week 12 taxi_pipeline (post-Chapter 5).
 
 Reference snapshot students can diff their own ``dags/taxi_pipeline.py``
 against if they get stuck. Ends up here after applying:
@@ -134,7 +134,7 @@ def _ds_from_context() -> str:
     catchup=False,
     max_active_runs=1,   # serialize: concurrent dbt runs collide on __dbt_backup relations
     default_args={"retries": 2},   # retry transient failures twice before marking the task failed
-    tags=["week11", "taxi", "student:lasse"],
+    tags=["week12", "taxi", "student:lasse"],
 )
 def taxi_pipeline():
     @task()
