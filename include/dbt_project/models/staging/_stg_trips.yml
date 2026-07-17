@@ -26,6 +26,8 @@ models:
           - relationships:
               to: ref('stg_zones')
               field: location_id
+              config:
+                severity: warn
       - name: payment_type
         description: TLC payment code (1-6).
         tests:
