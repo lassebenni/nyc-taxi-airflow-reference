@@ -66,13 +66,16 @@ def taxi_pipeline():
         ds = _ds_from_context()
         # Compare the ds helper against the raw context variable. For a
         # @monthly *scheduled* (or backfilled) run they match: both are the
-        # first of the month. They diverge on a *manual* trigger, where
-        # logical_date is None so _ds_from_context() falls back to run_after
-        # (≈ now), while data_interval_start still reflects the scheduled
-        # interval. That gap is why a partition key must come from the
-        # logical date, never from wall-clock now().
+        # first of the month. On a *manual* trigger they diverge sharply:
+        # Airflow 3 gives a manual run no data interval, so
+        # data_interval_start is absent from the context (a bare
+        # ctx["data_interval_start"] raises KeyError), while
+        # _ds_from_context() still returns a usable date via its run_after
+        # fallback. That is why a partition key must come from the logical
+        # date, never from data_interval_start (which can be missing) or now().
         ctx = get_current_context()
-        dis = ctx["data_interval_start"].strftime("%Y-%m-%d")
+        dis_raw = ctx.get("data_interval_start")  # absent on a manual run
+        dis = dis_raw.strftime("%Y-%m-%d") if dis_raw else "None (manual run: no data interval)"
         print(f"ds={ds} data_interval_start={dis}")
         year_month = ds[:7]
 
