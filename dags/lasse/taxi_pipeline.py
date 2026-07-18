@@ -192,7 +192,10 @@ def taxi_pipeline():
     dbt = "uvx --python 3.11 --from 'dbt-core==1.10.*' --with 'dbt-postgres==1.10.*' dbt"
     dbt_run = BashOperator(
         task_id="dbt_run",
-        bash_command=f"{dbt} run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}",
+        bash_command=(
+            f"{dbt} deps --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} && "
+            f"{dbt} run --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}"
+        ),
         env=DBT_ENV,
         append_env=True,
     )
