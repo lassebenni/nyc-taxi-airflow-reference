@@ -72,6 +72,11 @@ def taxi_pipeline():
         resp = requests.get(parquet_url_for(ds), timeout=60)
         resp.raise_for_status()
         df = pd.read_parquet(io.BytesIO(resp.content))
+        # Drop cross-month spillover so DELETE+append stays idempotent (Gotcha #4).
+        df = df[
+            pd.to_datetime(df["lpep_pickup_datetime"]).dt.strftime("%Y-%m")
+            == year_month
+        ]
 
         hook = PostgresHook(postgres_conn_id="azure_pg")
         engine = hook.get_sqlalchemy_engine()
